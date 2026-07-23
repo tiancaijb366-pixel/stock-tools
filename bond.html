@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>可转债溢价率计算器 — 实时数据查询 | Stock Tools</title>
+  <meta name="description" content="可转债溢价率计算器，提供沪深两市322只可转债实时数据，包括转股溢价率、转股价值、到期收益率等。打新可转债、套利必备工具。">
+  <meta name="keywords" content="可转债,溢价率,转股溢价率,可转债计算器,打新可转债,可转债实时数据,转股价值,到期收益率">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif; }
+    .premium-neg { color: #16a34a; font-weight: 600; }
+    .premium-pos { color: #dc2626; font-weight: 600; }
+    .premium-mid { color: #ca8a04; font-weight: 600; }
+    .flash { animation: flash 1s ease-out; }
+    @keyframes flash { 0% { opacity: 0.3; } 100% { opacity: 1; } }
+    #loading { transition: opacity .3s; }
+    th { position: sticky; top: 0; z-index: 10; }
+    input:focus { outline: none; border-color: #000; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+
+  <header class="border-b border-gray-200 bg-white py-5">
+    <div class="max-w-6xl mx-auto px-4">
+      <h1 class="text-xl font-bold tracking-tight">📊 可转债溢价率计算器</h1>
+      <p class="text-gray-500 text-sm mt-0.5">沪深两市 322 只可转债实时行情 · 数据来自东方财富 &amp; 腾讯证券</p>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Search & Stats -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <input id="search" type="text" placeholder="搜索转债代码或名称…" class="w-full sm:w-80 border border-gray-300 rounded-lg px-4 py-2.5 text-sm bg-white focus:border-gray-500 transition">
+      <div class="text-xs text-gray-400 tabular-nums" id="stats">加载中…</div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="flex items-center justify-center py-20">
+      <div class="flex flex-col items-center gap-3">
+        <svg class="animate-spin h-6 w-6 text-gray-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        <span class="text-sm text-gray-400">获取数据中…</span>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="hidden text-center py-20 text-red-500 text-sm"></div>
+
+    <!-- Table -->
+    <div id="table-wrap" class="hidden overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wide">
+            <th class="text-left px-4 py-3 font-medium">代码</th>
+            <th class="text-left px-4 py-3 font-medium">名称</th>
+            <th class="text-right px-4 py-3 font-medium">现价</th>
+            <th class="text-right px-4 py-3 font-medium">涨跌幅</th>
+            <th class="text-right px-4 py-3 font-medium">转股溢价率</th>
+            <th class="text-right px-4 py-3 font-medium">转股价值</th>
+            <th class="text-right px-4 py-3 font-medium">到期收益率</th>
+            <th class="text-right px-4 py-3 font-medium">正股</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+
+    <!-- Footer info -->
+    <div class="mt-12 border-t border-gray-200 pt-8 pb-12 text-center text-sm text-gray-400 space-y-2">
+      <p>⚠️ 数据仅供参考，不构成投资建议。延时约 1-3 秒。</p>
+      <p>📖 溢价率 = (转债现价 − 转股价值) / 转股价值 × 100% &nbsp;·&nbsp; <span class="text-green-600">绿色</span> = 折价(套利机会) &nbsp;·&nbsp; <span class="text-red-600">红色</span> = 高溢价</p>
+      <p class="pt-3">
+        <span class="text-gray-500">打赏:</span>
+        <code class="bg-gray-100 px-2 py-0.5 rounded text-xs text-gray-600 select-all">0x0D42B32D6E21F496082104BFC8d7213081474577</code>
+        <span class="text-gray-400 mx-1">(ETH / USDT ERC-20)</span>
+      </p>
+      <p>
+        <span class="text-gray-500">☕ 也可以</span>
+        <a href="https://prompt-pack-one.vercel.app" class="text-gray-700 underline hover:text-black">买杯咖啡支持我</a>
+      </p>
+      <p class="pt-2">
+        <a href="https://prompt-pack-one.vercel.app" class="inline-flex items-center gap-1 text-gray-600 hover:text-black transition">
+          <span class="text-lg">🦄</span> Pony Promo — 独立开发者的 30s 竖屏宣传视频，$19
+        </a>
+      </p>
+    </div>
+  </main>
+
+  <script>
+  (async function() {
+    const searchEl = document.getElementById('search');
+    const tbody = document.getElementById('tbody');
+    const loading = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const tableWrap = document.getElementById('table-wrap');
+    const stats = document.getElementById('stats');
+
+    let bonds = [];
+
+    // ---- Fetch data ----
+    try {
+      const EM_URL = 'https://push2.eastmoney.com/api/qt/clist/get?cb=jq';
+      const pages = [1, 2, 3, 4];
+      const emResults = await Promise.all(pages.map(pn =>
+        fetch(`${EM_URL}&pn=${pn}&pz=100&po=1&np=1&fields=f12,f14,f2,f3&fid=f12&fs=b:MK0354`)
+          .then(r => r.text())
+          .then(t => JSON.parse(t.slice(t.indexOf('(')+1, -1)))
+          .then(d => d.data.diff || [])
+      ));
+      const emList = emResults.flat();
+      if (!emList.length) throw new Error('获取转债列表失败');
+
+      // Build Tencent batch
+      const codes = emList.map(b => (b.f12.startsWith('12') ? 'sz' : 'sh') + b.f12);
+      const tencUrl = 'https://qt.gtimg.cn/q=' + codes.join(',');
+      // Tencent uses GBK encoding — decode explicitly
+      const tencRes = await fetch(tencUrl);
+      const tencBuf = await tencRes.arrayBuffer();
+      const tencText = new TextDecoder('gbk').decode(tencBuf);
+
+      // Parse Tencent responses
+      const tenMap = {};
+      const lines = tencText.split(';');
+      for (const line of lines) {
+        const m = line.match(/"(.+)"/);
+        if (!m) continue;
+        const f = m[1].split('~');
+        const code = f[2];
+        if (!code) continue;
+        tenMap[code] = {
+          premium: parseFloat(f[62]) || 0,
+          ytm: parseFloat(f[69]) || 0,
+          stock: f[1].replace(/转债$/, '')  // stock name approximation
+        };
+      }
+
+      // Merge
+      bonds = emList.map(b => {
+        const code = b.f12;
+        const name = b.f14 || '';
+        const price = (b.f2 || 0) / 1000;
+        const chg = (b.f3 || 0) / 100;
+        const t = tenMap[code] || {};
+        const premium = t.premium;
+        const cv = premium !== 0 && premium !== -100
+          ? price / (1 + premium / 100)
+          : 0;
+        const ytm = t.ytm;
+        return { code, name, price, chg, premium, cv, ytm, stock: t.stock };
+      });
+
+    } catch (e) {
+      loading.classList.add('hidden');
+      errorEl.classList.remove('hidden');
+      errorEl.textContent = '⚠️ 数据加载失败: ' + e.message + '。请刷新重试。';
+      stats.textContent = '加载失败';
+      return;
+    }
+
+    // ---- Render ----
+    loading.classList.add('hidden');
+    tableWrap.classList.remove('hidden');
+
+    function render(filter) {
+      const q = (filter || '').trim().toLowerCase();
+      const rows = q
+        ? bonds.filter(b => b.code.includes(q) || b.name.includes(q))
+        : bonds;
+      stats.textContent = `共 ${rows.length} 只转债`;
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray-400 py-10 text-sm">没有匹配结果</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(b => {
+        const premiumClass = b.premium < -1 ? 'premium-neg'
+                          : b.premium > 30 ? 'premium-pos'
+                          : b.premium > 0 ? 'premium-mid'
+                          : 'text-gray-900';
+        const chgClass = b.chg > 0 ? 'text-red-600' : b.chg < 0 ? 'text-green-600' : 'text-gray-500';
+        const cvDisplay = b.cv > 0 ? b.cv.toFixed(2) : '—';
+        const ytmDisplay = b.ytm !== 0 ? b.ytm.toFixed(2) + '%' : '—';
+        const premiumDisplay = b.premium !== 0 ? b.premium.toFixed(2) + '%' : '—';
+
+        return `<tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-2.5 font-mono text-xs text-gray-500">${b.code}</td>
+          <td class="px-4 py-2.5 font-medium">${b.name}</td>
+          <td class="px-4 py-2.5 text-right tabular-nums">${b.price.toFixed(3)}</td>
+          <td class="px-4 py-2.5 text-right tabular-nums ${chgClass}">${b.chg > 0 ? '+' : ''}${b.chg.toFixed(2)}%</td>
+          <td class="px-4 py-2.5 text-right tabular-nums ${premiumClass}">${premiumDisplay}</td>
+          <td class="px-4 py-2.5 text-right tabular-nums text-gray-600">${cvDisplay}</td>
+          <td class="px-4 py-2.5 text-right tabular-nums ${b.ytm < 0 ? 'text-red-500' : 'text-gray-600'}">${ytmDisplay}</td>
+          <td class="px-4 py-2.5 text-right text-xs text-gray-400">${b.stock}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    render('');
+
+    searchEl.addEventListener('input', e => render(e.target.value));
+  })();
+  </script>
+</body>
+</html>

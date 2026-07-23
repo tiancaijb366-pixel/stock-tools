@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Tools — Free Investment Analysis Tools</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: {} } }
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .tab-active { border-bottom: 2px solid #3b82f6; color: #60a5fa; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-200 min-h-screen">
+  <header class="border-b border-gray-800 py-6">
+    <div class="max-w-5xl mx-auto px-4">
+      <h1 class="text-2xl font-bold text-white">📊 Stock Tools</h1>
+      <p class="text-gray-400 text-sm mt-1">Free investment analysis tools for individual investors</p>
+    </div>
+  </header>
+
+  <div class="max-w-5xl mx-auto px-4 py-8">
+    <!-- Tab Bar -->
+    <div class="flex gap-6 border-b border-gray-800 mb-8">
+      <button class="tab-btn tab-active pb-3 text-sm font-medium" data-tab="screener">Stock Screener</button>
+      <button class="tab-btn pb-3 text-sm font-medium text-gray-400 hover:text-white" data-tab="valuation">Valuation Calculator</button>
+      <button class="tab-btn pb-3 text-sm font-medium text-gray-400 hover:text-white" data-tab="checklist">Investment Checklist</button>
+      <a href="bond.html" class="pb-3 text-sm font-medium text-gray-400 hover:text-white border-b-2 border-transparent hover:border-gray-400 transition">可转债计算器</a>
+    </div>
+
+    <!-- Screener Tab -->
+    <div id="tab-screener" class="tab-content">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Market</label>
+          <select id="s-market" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm">
+            <option value="all">All Markets</option>
+            <option value="us">US Stocks</option>
+            <option value="cn">China A-Shares</option>
+            <option value="hk">Hong Kong</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Sector</label>
+          <select id="s-sector" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm">
+            <option value="all">All Sectors</option>
+            <option value="tech">Technology</option>
+            <option value="finance">Finance</option>
+            <option value="health">Healthcare</option>
+            <option value="consumer">Consumer</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Min ROIC (%)</label>
+          <input type="number" id="s-roic" value="15" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Min Revenue Growth (%)</label>
+          <input type="number" id="s-growth" value="10" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm">
+        </div>
+      </div>
+      <button onclick="filterStocks()" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-sm font-medium mb-6">Search</button>
+      <div id="screener-results" class="space-y-2"></div>
+    </div>
+
+    <!-- Valuation Tab -->
+    <div id="tab-valuation" class="tab-content hidden">
+      <div class="grid md:grid-cols-3 gap-6">
+        <div class="bg-gray-900 rounded-xl p-6">
+          <h3 class="font-semibold mb-4">PE Ratio Calculator</h3>
+          <label class="block text-xs text-gray-400 mb-1">Stock Price ($)</label>
+          <input type="number" id="pe-price" value="100" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm mb-3">
+          <label class="block text-xs text-gray-400 mb-1">EPS ($)</label>
+          <input type="number" id="pe-eps" value="5" step="0.01" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm mb-3">
+          <button onclick="calcPE()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm">Calculate</button>
+          <div id="pe-result" class="mt-3 text-sm text-gray-300"></div>
+        </div>
+        <div class="bg-gray-900 rounded-xl p-6">
+          <h3 class="font-semibold mb-4">PB Ratio Calculator</h3>
+          <label class="block text-xs text-gray-400 mb-1">Stock Price ($)</label>
+          <input type="number" id="pb-price" value="100" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm mb-3">
+          <label class="block text-xs text-gray-400 mb-1">Book Value Per Share ($)</label>
+          <input type="number" id="pb-bv" value="50" step="0.01" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm mb-3">
+          <button onclick="calcPB()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm">Calculate</button>
+          <div id="pb-result" class="mt-3 text-sm text-gray-300"></div>
+        </div>
+        <div class="bg-gray-900 rounded-xl p-6">
+          <h3 class="font-semibold mb-4">DCF Calculator</h3>
+          <label class="block text-xs text-gray-400 mb-1">Free Cash Flow ($M)</label>
+          <input type="number" id="dcf-fcf" value="100" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm mb-3">
+          <label class="block text-xs text-gray-400 mb-1">Growth Rate (%)</label>
+          <input type="number" id="dcf-growth" value="10" class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm mb-3">
+          <button onclick="calcDCF()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm">Calculate</button>
+          <div id="dcf-result" class="mt-3 text-sm text-gray-300"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Checklist Tab -->
+    <div id="tab-checklist" class="tab-content hidden">
+      <div class="bg-gray-900 rounded-xl p-6 max-w-2xl">
+        <h3 class="font-semibold mb-4">Buffett-Style Investment Checklist</h3>
+        <div id="checklist-items" class="space-y-3"></div>
+        <div id="checklist-score" class="mt-6 pt-4 border-t border-gray-700"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-gray-800 py-8 text-center text-sm text-gray-500">
+    <p class="mb-2">Built for individual investors. Not financial advice.</p>
+    <p class="mb-2">Support: <a href="https://prompt-pack-one.vercel.app" class="text-blue-400 hover:text-blue-300">100 ChatGPT Prompts for Developers — $1</a></p>
+    <p class="mb-2">Crypto donations: <code class="text-gray-400">0x0D42B32D6E21F496082104BFC8d7213081474577</code> (ETH/USDT ERC-20)</p>
+    <p>Need more API credits? <a href="https://opencode.ai/go?ref=7TBCE3WTQ6" class="text-blue-400 hover:text-blue-300">Sign up for OpenCode</a></p>
+  </footer>
+
+  <script>
+    const stocks = [
+      { name: 'NVIDIA', ticker: 'NVDA', market: 'us', sector: 'tech', roic: 45, growth: 55 },
+      { name: 'Microsoft', ticker: 'MSFT', market: 'us', sector: 'tech', roic: 35, growth: 15 },
+      { name: 'Apple', ticker: 'AAPL', market: 'us', sector: 'tech', roic: 50, growth: 8 },
+      { name: 'Amazon', ticker: 'AMZN', market: 'us', sector: 'consumer', roic: 12, growth: 20 },
+      { name: 'Meta', ticker: 'META', market: 'us', sector: 'tech', roic: 28, growth: 22 },
+      { name: 'Kweichow Moutai', ticker: '600519', market: 'cn', sector: 'consumer', roic: 30, growth: 15 },
+      { name: 'Tencent', ticker: '0700.HK', market: 'hk', sector: 'tech', roic: 18, growth: 12 },
+      { name: 'Alibaba', ticker: 'BABA', market: 'us', sector: 'consumer', roic: 15, growth: 10 },
+      { name: 'Berkshire Hathaway', ticker: 'BRK.B', market: 'us', sector: 'finance', roic: 12, growth: 8 },
+      { name: 'BYD', ticker: '1211.HK', market: 'hk', sector: 'consumer', roic: 8, growth: 35 },
+      { name: 'TSMC', ticker: 'TSM', market: 'us', sector: 'tech', roic: 25, growth: 18 },
+      { name: 'China Merchants Bank', ticker: '600036', market: 'cn', sector: 'finance', roic: 16, growth: 8 },
+      { name: 'Pinduoduo', ticker: 'PDD', market: 'us', sector: 'consumer', roic: 22, growth: 40 },
+      { name: 'Meituan', ticker: '3690.HK', market: 'hk', sector: 'consumer', roic: 10, growth: 25 },
+      { name: 'NetEase', ticker: 'NTES', market: 'us', sector: 'tech', roic: 20, growth: 12 },
+      { name: 'Kweichow Moutai', ticker: '600519', market: 'cn', sector: 'consumer', roic: 32, growth: 14 },
+    ];
+
+    const checklistItems = [
+      'Does the company have a durable competitive advantage (moat)?',
+      'Has ROIC been consistently above 15% in the last 5 years?',
+      'Is debt manageable (D/E ratio &lt; 0.5 for non-financial)?',
+      'Has revenue grown consistently over 5+ years?',
+      'Is the founder/CEO still leading and aligned?',
+      'Is operating margin stable or improving?',
+      'Does the business generate strong free cash flow?',
+      'Is the business simple enough to understand?',
+      'Can earnings per share grow at 10%+ annually for the next 5 years?',
+      'Is insider ownership significant (10%+)?',
+      'Has the company been buying back shares consistently?',
+      'Is the current PE below the 5-year average?',
+      'Does the company have pricing power?',
+      'Is the industry structurally growing or stable?',
+      'Is there room for international expansion?',
+      'Are you willing to hold this for 10 years?',
+    ];
+
+    let tabs = document.querySelectorAll('.tab-btn');
+    let contents = document.querySelectorAll('.tab-content');
+    tabs.forEach(t => t.addEventListener('click', function() {
+      tabs.forEach(x => { x.classList.remove('tab-active'); x.classList.add('text-gray-400'); });
+      this.classList.add('tab-active'); this.classList.remove('text-gray-400'); this.classList.add('text-white');
+      contents.forEach(c => c.classList.add('hidden'));
+      document.getElementById('tab-' + this.dataset.tab).classList.remove('hidden');
+    }));
+
+    function filterStocks() {
+      const m = document.getElementById('s-market').value;
+      const sec = document.getElementById('s-sector').value;
+      const roic = parseFloat(document.getElementById('s-roic').value) || 0;
+      const growth = parseFloat(document.getElementById('s-growth').value) || 0;
+      const results = stocks.filter(s => {
+        if (m !== 'all' && s.market !== m) return false;
+        if (sec !== 'all' && s.sector !== sec) return false;
+        if (s.roic < roic) return false;
+        if (s.growth < growth) return false;
+        return true;
+      });
+      const div = document.getElementById('screener-results');
+      if (results.length === 0) {
+        div.innerHTML = '<p class="text-gray-500 text-sm">No stocks match your criteria.</p>';
+        return;
+      }
+      div.innerHTML = '<div class="grid gap-2">' + results.map(s => `
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-4 flex justify-between items-center">
+          <div><span class="font-medium">${s.name}</span> <span class="text-gray-400 text-sm">${s.ticker}</span></div>
+          <div class="text-xs text-gray-400">ROIC: ${s.roic}% | Growth: ${s.growth}% | ${s.market.toUpperCase()} | ${s.sector}</div>
+        </div>
+      `).join('') + '</div>';
+    }
+    filterStocks();
+
+    function calcPE() {
+      const p = parseFloat(document.getElementById('pe-price').value);
+      const e = parseFloat(document.getElementById('pe-eps').value);
+      const pe = (p / e).toFixed(2);
+      const verdict = pe < 15 ? 'Undervalued' : pe < 25 ? 'Fair' : 'Overvalued';
+      document.getElementById('pe-result').innerHTML = `PE Ratio: <strong>${pe}</strong> (${verdict})`;
+    }
+    calcPE();
+
+    function calcPB() {
+      const p = parseFloat(document.getElementById('pb-price').value);
+      const b = parseFloat(document.getElementById('pb-bv').value);
+      const pb = (p / b).toFixed(2);
+      const verdict = pb < 1 ? 'Undervalued' : pb < 3 ? 'Fair' : 'Overvalued';
+      document.getElementById('pb-result').innerHTML = `PB Ratio: <strong>${pb}</strong> (${verdict})`;
+    }
+    calcPB();
+
+    function calcDCF() {
+      const fcf = parseFloat(document.getElementById('dcf-fcf').value);
+      const g = parseFloat(document.getElementById('dcf-growth').value) / 100;
+      const r = 0.1;
+      let pv = 0;
+      for (let y = 1; y <= 10; y++) {
+        const cf = fcf * Math.pow(1 + g, y);
+        pv += cf / Math.pow(1 + r, y);
+      }
+      const tv = (fcf * Math.pow(1 + g, 11) * 15) / Math.pow(1 + r, 10);
+      document.getElementById('dcf-result').innerHTML =
+        `10-Year PV: <strong>$${(pv + tv).toFixed(0)}M</strong> (terminal: $${tv.toFixed(0)}M)`;
+    }
+    calcDCF();
+
+    // Render checklist
+    const clDiv = document.getElementById('checklist-items');
+    checklistItems.forEach((item, i) => {
+      clDiv.innerHTML += `
+        <label class="flex items-start gap-3 cursor-pointer group">
+          <input type="checkbox" onchange="updateScore()" class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-800">
+          <span class="text-sm text-gray-300 group-hover:text-white">${item}</span>
+        </label>`;
+    });
+
+    function updateScore() {
+      const checked = document.querySelectorAll('#checklist-items input:checked').length;
+      const total = checklistItems.length;
+      const score = (checked / total * 100).toFixed(0);
+      const div = document.getElementById('checklist-score');
+      div.innerHTML = `<p class="text-sm">Score: <strong>${checked}/${total}</strong> (${score}%)</p>`;
+    }
+    updateScore();
+  </script>
+</body>
+</html>
