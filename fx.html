@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>实时汇率 & 加密货币行情 — USD/CNY, BTC/ETH 价格 | Stock Tools</title>
+  <meta name="description" content="实时汇率 & 加密货币行情，查看美元、欧元、港币、日元兑人民币汇率，以及比特币、以太坊实时美元价格。数据来源 Open Exchange Rates & CoinGecko。">
+  <meta name="keywords" content="实时汇率,美元兑人民币,欧元兑人民币,比特币价格,以太坊价格,BTC,ETH,外汇行情">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={darkMode:'class',theme:{extend:{}}}</script>
+  <style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',sans-serif}</style>
+</head>
+<body class="bg-gray-950 text-gray-200 min-h-screen">
+  <header class="border-b border-gray-800 py-6">
+    <div class="max-w-4xl mx-auto px-4">
+      <h1 class="text-2xl font-bold text-white">💱 实时汇率 &amp; 加密货币行情</h1>
+      <p class="text-gray-400 text-sm mt-1">数据来源：Open Exchange Rates · CoinGecko · 自动每 60 秒刷新</p>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-6">
+    <!-- Loading -->
+    <div id="loading" class="flex items-center justify-center py-20">
+      <svg class="animate-spin h-6 w-6 text-gray-400" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+      <span class="text-sm text-gray-400 ml-3">加载中…</span>
+    </div>
+
+    <!-- FX Rates -->
+    <div id="fxGrid" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
+
+    <!-- Crypto -->
+    <h2 class="hidden text-lg font-semibold text-white mb-4" id="cryptoTitle">🪙 加密货币</h2>
+    <div id="cryptoGrid" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"></div>
+
+    <div id="error" class="hidden text-red-400 text-sm text-center py-10"></div>
+
+    <!-- Description -->
+    <div class="mt-8 text-xs text-gray-500 space-y-1">
+      <p>📌 汇率数据来自 Open Exchange Rates，仅供参考，实际交易以银行牌价为准。</p>
+      <p>📌 加密货币价格来自 CoinGecko，延时约 1-2 分钟。</p>
+    </div>
+
+    <!-- Other tools -->
+    <div class="mt-8 pt-6 border-t border-gray-800 text-center text-sm text-gray-500 space-y-2">
+      <p>
+        <a href="market.html" class="text-blue-400 hover:text-blue-300">📈 A股实时行情速查</a>
+        <span class="mx-2">·</span>
+        <a href="sectors.html" class="text-blue-400 hover:text-blue-300">📊 行业板块涨跌榜</a>
+        <span class="mx-2">·</span>
+        <a href="bond.html" class="text-blue-400 hover:text-blue-300">🔗 可转债计算器</a>
+        <span class="mx-2">·</span>
+        <a href="index.html" class="text-blue-400 hover:text-blue-300">🏠 首页</a>
+      </p>
+    </div>
+  </main>
+
+  <footer class="border-t border-gray-800 py-8 text-center text-sm text-gray-500">
+    <p class="mb-2">打赏: <code class="text-gray-400 select-all">0x0D42B32D6E21F496082104BFC8d7213081474577</code> (ETH / USDT ERC-20)</p>
+    <p>
+      <a href="https://prompt-pack-one.vercel.app" class="inline-flex items-center gap-1 text-gray-600 hover:text-gray-300 transition">
+        <span>🦄</span> Pony Promo — 独立开发者的 30s 竖屏宣传视频，$19
+      </a>
+    </p>
+  </footer>
+
+  <script>
+  (async function() {
+    const loading = document.getElementById('loading');
+    const fxGrid = document.getElementById('fxGrid');
+    const cryptoGrid = document.getElementById('cryptoGrid');
+    const cryptoTitle = document.getElementById('cryptoTitle');
+    const errorEl = document.getElementById('error');
+
+    const FX_PAIRS = [
+      { from: 'USD', to: 'CNY', label: '美元/人民币' },
+      { from: 'EUR', to: 'CNY', label: '欧元/人民币' },
+      { from: 'HKD', to: 'CNY', label: '港币/人民币' },
+      { from: 'JPY', to: 'CNY', label: '日元/人民币' },
+    ];
+
+    // We fetch USD-based rates, then derive cross rates to CNY
+    async function fetchFX() {
+      const res = await fetch('https://open.er-api.com/v6/latest/USD');
+      const data = await res.json();
+      if (data.result !== 'success') throw new Error('汇率 API 返回失败');
+      return data.rates;
+    }
+
+    function renderFXCard(pair, rate) {
+      const val = pair.from === 'JPY' ? (rate / 100).toFixed(4) : rate.toFixed(4);
+      return `<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center">
+        <div class="text-sm text-gray-400 mb-1">${pair.label}</div>
+        <div class="text-2xl font-bold text-white tabular-nums">${val}</div>
+        <div class="text-xs text-gray-500 mt-1">1 ${pair.from}</div>
+      </div>`;
+    }
+
+    async function load() {
+      try {
+        // FX
+        const rates = await fetchFX();
+        const cnyRate = rates.CNY; // USD/CNY
+        if (!cnyRate) throw new Error('无法获取人民币汇率');
+
+        const pairRates = FX_PAIRS.map(p => {
+          if (p.from === 'USD') return { pair: p, rate: cnyRate };
+          // Derive: X/CNY = (X/USD) * (USD/CNY)
+          const usdRate = rates[p.from];
+          if (!usdRate) return { pair: p, rate: 0 };
+          return { pair: p, rate: cnyRate / usdRate };
+        });
+
+        loading.classList.add('hidden');
+        fxGrid.classList.remove('hidden');
+        fxGrid.innerHTML = pairRates.map(r => renderFXCard(r.pair, r.rate)).join('');
+
+        // Crypto
+        const cgRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd');
+        const cg = await cgRes.json();
+        cryptoTitle.classList.remove('hidden');
+        cryptoGrid.classList.remove('hidden');
+        const btc = cg.bitcoin?.usd || 0;
+        const eth = cg.ethereum?.usd || 0;
+        cryptoGrid.innerHTML = `
+          <div class="bg-gray-900 border border-orange-900/30 rounded-xl p-5 text-center">
+            <div class="text-sm text-gray-400 mb-1">₿ Bitcoin (BTC)</div>
+            <div class="text-2xl font-bold text-orange-400 tabular-nums">$${btc.toLocaleString()}</div>
+          </div>
+          <div class="bg-gray-900 border border-blue-900/30 rounded-xl p-5 text-center">
+            <div class="text-sm text-gray-400 mb-1">⟠ Ethereum (ETH)</div>
+            <div class="text-2xl font-bold text-blue-400 tabular-nums">$${eth.toLocaleString()}</div>
+          </div>
+        `;
+
+        errorEl.classList.add('hidden');
+        setTimeout(load, 60000);
+      } catch (e) {
+        loading.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+        errorEl.textContent = '⚠️ 数据加载失败: ' + e.message + '。请刷新重试。';
+      }
+    }
+
+    load();
+  })();
+  </script>
+</body>
+</html>
